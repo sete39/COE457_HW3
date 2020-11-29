@@ -1,0 +1,94 @@
+<html>
+    <head>
+        <style>
+            html {
+                height: 100%;
+                width: 100%;
+            }
+            body {
+                height: 100%;
+                width: 100%;
+            }
+            .blackCircle {
+                display: flex;
+                height: 70%;
+                width: 70vh;
+                border-radius: 50%;
+                background-color: black;
+                text-align: center;
+            }
+            .center {
+                margin: auto;
+            }
+            .compass {
+                font-size: 300;
+                transform: rotate(0deg);
+                color: grey;
+            }
+        </style>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/paho-mqtt/1.0.1/mqttws31.min.js"></script>
+        <script>
+            window.onload = function() {
+                function calculateAngle(current, destination) {
+                    // [0] is latitude, [1] is longitude
+                    // θ = atan2(sin(Δlong)*cos(lat2), cos(lat1)*sin(lat2) − sin(lat1)*cos(lat2)*cos(Δlong))
+                    // equation from https://stackoverflow.com/questions/3932502/calculate-angle-between-two-latitude-longitude-points
+                    const diffLng = destination[1] - current[1];
+                    const t1 = Math.sin(diffLng) * Math.cos(destination[0]);
+                    const t2 = Math.cos(current[0]) * Math.sin(destination[0]);
+                    const t3 = Math.sin(current[0]) * Math.cos(destination[0]) * Math.cos(diffLng);
+                    const angleRadians = Math.atan2(t1, (t2 - t3));
+                    return (angleRadians * 180 / Math.PI); // 
+                }
+                
+                function updateLocation(message) {
+                    $('.compass').css('color', 'white');
+                    const parsedMessage = message.payloadString.split(' '); // current lat., current long., dest. lat., dest. long.
+                    const current = [parseFloat(parsedMessage[0]), parseFloat(parsedMessage[1])];
+                    const destination = [parseFloat(parsedMessage[2]), parseFloat(parsedMessage[3])];
+                    angle = calculateAngle(current, destination);
+                    console.log(angle);
+                    $('.compass').css('transform', 'rotate(' + (angle-90) + 'deg)'); // angle - 90 to make it point up when angle=0
+                }
+                var wsbroker = "10.0.1.42"; //mqtt websocket enabled broker
+                var wsport = 9001 // port for above
+                var mqttClient = new Paho.MQTT.Client(wsbroker, wsport, ("myclientid_" + parseInt(Math.random() * 100, 10)));
+
+                mqttClient.onConnectionLost = function (responseObject) {
+                    console.log("connection lost: " + responseObject.errorMessage);
+                };
+                mqttClient.onMessageArrived = function (message) {
+                    console.log(message.destinationName, ' -- ', message.payloadString);
+                    updateLocation(message);
+                };
+                var options = {
+                    timeout: 3,
+                    onSuccess: function () {
+                        console.log("mqtt connected");
+                        // Connection succeeded; subscribe to our topic, you can add multiple lines of these
+                         mqttClient.subscribe("map/coordinates", { qos: 1 });
+                        // // use the below if you want to publish to a topic on connect
+                        // message = new Paho.MQTT.Message('coordinatesString');
+                        // message.destinationName = "map/coordinates";
+                        // mqttClient.send(message);
+                        // console.log('message sent');
+                    },
+                    onFailure: function (message) {
+                        console.log("Connection failed: " + message.errorMessage);
+                    }
+                };
+                mqttClient.connect(options);
+            }
+        </script>
+        <link rel="icon" href="data:,">
+        <title>Compass</title>
+    </head>
+    <body>
+        <div class="blackCircle center">
+            <div class="center compass">
+                >
+            </div>
+        </div>
+    </body>
+</html>

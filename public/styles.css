@@ -1,0 +1,22 @@
+html, body {
+    margin: 0;
+    font-size: larger;
+}
+
+.center {
+    width: 50%;
+    margin: auto;
+}
+
+.heading-align {
+    text-align: center;
+    padding-top: 5%;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.gdpr-checkbox {
+    width: 75%;
+}
